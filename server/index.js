@@ -26,7 +26,7 @@ const db = mysql.createConnection({
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'kakanin_db',
-  port: process.env.DB_PORT || 3306 // Good for production hosting
+  port: process.env.DB_PORT || 3306 
 });
 
 db.connect((err) => {
@@ -142,8 +142,9 @@ app.post('/api/reservations', authenticateToken, (req, res) => {
 // Serve the static files from the Vite build (dist) folder
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// For any request that doesn't match an API route, send index.html
-app.get('*', (req, res) => {
+// --- FIXED CATCH-ALL FOR EXPRESS 5.0 ---
+// Using '(*)' instead of '*' fixes the PathError in Express 5.x
+app.get('(*)', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist', 'index.html'));
 });
 
