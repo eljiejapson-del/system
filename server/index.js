@@ -1,9 +1,17 @@
-const express = require('express');
-const cors = require('cors');
-const mysql = require('mysql2');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import mysql from 'mysql2';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+dotenv.config();
+
+// Fix for __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -12,24 +20,24 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'kakanin_secret_key';
 
-// MySQL Connection (Using mock for now, but configured for real MySQL)
+// --- DATABASE CONNECTION ---
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'kakanin_db'
+  database: process.env.DB_NAME || 'kakanin_db',
+  port: process.env.DB_PORT || 3306 // Good for production hosting
 });
 
 db.connect((err) => {
   if (err) {
     console.error('Error connecting to MySQL:', err);
-    // In a production environment, we would handle this better
     return;
   }
   console.log('Connected to MySQL Database');
 });
 
-// Middleware for authentication
+// --- AUTH MIDDLEWARE ---
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -44,7 +52,6 @@ const authenticateToken = (req, res, next) => {
 };
 
 // --- AUTH ROUTES ---
-
 app.post('/api/register', async (req, res) => {
   const { username, email, password } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -74,7 +81,6 @@ app.post('/api/login', (req, res) => {
 });
 
 // --- PRODUCT ROUTES ---
-
 app.get('/api/products', (req, res) => {
   db.query('SELECT * FROM products', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -83,7 +89,6 @@ app.get('/api/products', (req, res) => {
 });
 
 // --- ORDER ROUTES ---
-
 app.post('/api/orders', authenticateToken, (req, res) => {
   const { total_amount, items } = req.body;
   const userId = req.user.id;
@@ -122,7 +127,6 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 });
 
 // --- RESERVATION ROUTES ---
-
 app.post('/api/reservations', authenticateToken, (req, res) => {
   const { reservation_date, reservation_time, pax, special_requests } = req.body;
   const userId = req.user.id;
@@ -132,6 +136,15 @@ app.post('/api/reservations', authenticateToken, (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Reservation created successfully' });
   });
+});
+
+// --- FRONTEND INTEGRATION ---
+// Serve the static files from the Vite build (dist) folder
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// For any request that doesn't match an API route, send index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../dist', 'index.html'));
 });
 
 app.listen(PORT, () => {
