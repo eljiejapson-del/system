@@ -139,12 +139,13 @@ app.post('/api/reservations', authenticateToken, (req, res) => {
 });
 
 // --- FRONTEND INTEGRATION ---
-// Serve the static files from the Vite build (dist) folder
+// Serve static files
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// --- FIXED CATCH-ALL FOR EXPRESS 5.0 ---
-// Using '(*)' instead of '*' fixes the PathError in Express 5.x
-app.get('(*)', (req, res) => {
+// --- THE ULTIMATE FIX ---
+// Using a Regular Expression Literal ( /.*/ ) instead of a string.
+// This works regardless of the version of path-to-regexp installed.
+app.get(/^(?!\/api).+/, (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist', 'index.html'));
 });
 
