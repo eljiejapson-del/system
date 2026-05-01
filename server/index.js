@@ -9,7 +9,6 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-// Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -20,21 +19,25 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'kakanin_secret_key';
 
-// --- DATABASE CONNECTION ---
+// --- DATABASE CONNECTION (AIVEN READY) ---
+// Aiven requires SSL. The 'mysql2' library handles this via the 'ssl' object.
 const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'kakanin_db',
-  port: process.env.DB_PORT || 3306 
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+  ssl: {
+    rejectUnauthorized: false // Required for most cloud providers like Aiven
+  }
 });
 
 db.connect((err) => {
   if (err) {
-    console.error('Error connecting to MySQL:', err);
+    console.error('Error connecting to Aiven MySQL:', err.message);
     return;
   }
-  console.log('Connected to MySQL Database');
+  console.log('Connected to Aiven MySQL Database');
 });
 
 // --- AUTH MIDDLEWARE ---
@@ -139,12 +142,8 @@ app.post('/api/reservations', authenticateToken, (req, res) => {
 });
 
 // --- FRONTEND INTEGRATION ---
-// Serve static files
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// --- THE ULTIMATE FIX ---
-// Using a Regular Expression Literal ( /.*/ ) instead of a string.
-// This works regardless of the version of path-to-regexp installed.
 app.get(/^(?!\/api).+/, (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist', 'index.html'));
 });
